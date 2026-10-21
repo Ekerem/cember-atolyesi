@@ -1,0 +1,756 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Çember Atölyesi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Düzen: solda kareli çizim yaprağı, sağda sekmeli bilgi paneli; çember kontrolleri yaprağın sol alt köşesinde */
+:root{
+  --bg:#E8EDF4; --paper:#FFFFFF; --grid:#D2DDEB; --ink:#1B2740; --muted:#5A6A85; --line:#CBD5E3;
+  --accent:#2F5BEA; --accent-soft:#E6EDFE; --on-accent:#FFFFFF;
+  --warn:#C8410B; --warn-soft:#FDEBE2; --ok:#2B9348; --ok-soft:#E3F4E7;
+  --c1:#E8590C; --c2:#2B9348; --c3:#C2255C; --c4:#7048E8; --c5:#0C8599; --c6:#A06A00;
+  --t-cesit:#E8590C; --t-ikiz:#2B9348; --t-es:#2F5BEA;
+  --display:"Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1522; --paper:#152033; --grid:#23324B; --ink:#E7EDF7; --muted:#97A6BF; --line:#2A3A55;
+  --accent:#6F95FF; --accent-soft:#1E2C4A; --on-accent:#0E1522;
+  --warn:#FF8A5B; --warn-soft:#3A2219; --ok:#51CF66; --ok-soft:#18321F;
+  --c1:#FF922B; --c2:#51CF66; --c3:#F06595; --c4:#9775FA; --c5:#22B8CF; --c6:#E9B949;
+  --t-cesit:#FF922B; --t-ikiz:#51CF66; --t-es:#6F95FF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1522; --paper:#152033; --grid:#23324B; --ink:#E7EDF7; --muted:#97A6BF; --line:#2A3A55;
+  --accent:#6F95FF; --accent-soft:#1E2C4A; --on-accent:#0E1522;
+  --warn:#FF8A5B; --warn-soft:#3A2219; --ok:#51CF66; --ok-soft:#18321F;
+  --c1:#FF922B; --c2:#51CF66; --c3:#F06595; --c4:#9775FA; --c5:#22B8CF; --c6:#E9B949;
+  --t-cesit:#FF922B; --t-ikiz:#51CF66; --t-es:#6F95FF; color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,370px);gap:16px;
+  padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+button,select,textarea,input{font:inherit;color:inherit}
+
+.sheet{position:relative;min-height:0;min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.board-wrap{position:absolute;inset:0}
+#board{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+.tip{position:absolute;top:14px;left:16px;right:16px;width:max-content;max-width:calc(100% - 32px);font-weight:700;font-size:13px;color:var(--muted);background:var(--paper);padding:4px 10px;border-radius:99px;border:1px solid var(--line);pointer-events:none}
+.tip.seg{color:var(--accent);border-color:var(--accent)}
+.toast{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-weight:700;font-size:14px;padding:8px 14px;border-radius:12px;pointer-events:none;opacity:0;transition:opacity .2s;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1}
+
+/* svg */
+.gl{fill:none;stroke:var(--grid);stroke-width:.035}
+.cfill{fill-opacity:.07}
+.cline{fill:none;stroke-width:.07;stroke-opacity:.85}
+.cline.sel{stroke-width:.12;stroke-opacity:1}
+.rline{stroke-width:.06;stroke-dasharray:.18 .12;stroke-linecap:round}
+.rt{font:800 .4px var(--body);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:var(--paper);stroke-width:.13px;stroke-linejoin:round}
+.tfill{fill-opacity:.16}
+.seg{stroke:var(--ink);stroke-width:.12;stroke-linecap:round}
+.tick{stroke-linecap:round;stroke-width:.07}
+.lt{font:800 .4px var(--body);fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:var(--paper);stroke-width:.14px;stroke-linejoin:round}
+.rubber{stroke:var(--accent);stroke-width:.08;stroke-dasharray:.2 .14;stroke-linecap:round}
+.pl{font:800 .56px var(--display);fill:var(--ink);text-anchor:middle;dominant-baseline:central;paint-order:stroke;stroke:var(--paper);stroke-width:.15px;stroke-linejoin:round}
+.cdot{stroke:var(--paper);stroke-width:.07}
+.idot{fill:var(--ink);stroke:var(--paper);stroke-width:.07}
+.halo{fill:var(--accent);fill-opacity:.16;stroke:var(--accent);stroke-width:.04}
+.halo.start{fill-opacity:.35;stroke-width:.07}
+.empty-msg{font:700 .5px var(--body);fill:var(--muted);text-anchor:middle;dominant-baseline:central}
+
+/* kontroller */
+.controls{position:absolute;left:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgb(20 30 60 / .08);width:min(600px,calc(100% - 32px))}
+.c-label{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.toprow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.big{border:0;background:var(--accent);color:var(--on-accent);font:800 17px/1 var(--display);padding:10px 16px 8px;border-radius:12px;cursor:pointer}
+.big:disabled{opacity:.35;cursor:not-allowed}
+.big:not(:disabled):active{transform:translateY(1px)}
+.segctl{display:inline-flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.segctl button{border:0;background:transparent;font-weight:800;font-size:13px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.segctl button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px 14px}
+.crow{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:10px;border:1px solid transparent}
+.crow.sel{border-color:var(--line);background:var(--accent-soft)}
+.cname{font:800 18px/1 var(--display);width:22px;text-align:center;padding-top:3px;cursor:pointer;background:none;border:0}
+.crow input[type=range]{flex:1;min-width:80px;height:28px}
+.rval{font-weight:800;font-variant-numeric:tabular-nums;font-size:14px;min-width:56px}
+.del{border:0;background:none;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:8px}
+.del:hover{color:var(--warn)}
+.row{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line);background:var(--accent-soft);color:var(--ink);font:700 12px var(--body);padding:5px 10px;border-radius:99px;cursor:pointer;text-decoration:none}
+.chip:hover{border-color:var(--accent)}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.chip.solid{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tog{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer}
+.tog input{accent-color:var(--accent);width:14px;height:14px;margin:0}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* panel */
+.panel{min-height:0;min-width:0;overflow:auto;display:flex;flex-direction:column;gap:14px;padding:4px 2px 44px}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+#name{font:800 clamp(1.9rem,3vw,2.6rem)/1.05 var(--display);margin:2px 0 0;text-wrap:balance}
+#name{transform-origin:left center}
+#name.pop{animation:pop .45s ease}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+.tabs{display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{flex:1;border:0;background:none;padding:8px 6px;border-radius:9px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
+.tabs .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:11px}
+.tabs button[aria-selected="true"] .cnt{background:var(--on-accent);color:var(--accent)}
+.tab{display:flex;flex-direction:column;gap:14px}
+.panel h2{font:700 13px var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.empty{font-size:14px;color:var(--muted);line-height:1.45;margin:0}
+.hint{background:var(--accent-soft);border-radius:14px;padding:12px 14px;line-height:1.45;font-size:14.5px}
+.hint b.h{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+.pairs{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none;font-size:14px;line-height:1.35}
+.pairs li{display:flex;gap:8px;align-items:baseline}
+.pairs .k{font-weight:800;min-width:42px}
+.pairs .s{color:var(--muted)}
+.pairs .s.on{color:var(--ink);font-weight:700}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.card-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tname{font:800 20px/1 var(--display);padding-top:3px}
+.badge{font:800 13px var(--body);padding:4px 10px;border-radius:99px;color:#fff}
+.b-cesit{background:var(--t-cesit)}.b-ikiz{background:var(--t-ikiz)}.b-es{background:var(--t-es)}.b-none{background:var(--muted)}
+.tbl{display:flex;flex-direction:column;gap:5px;font-variant-numeric:tabular-nums;font-size:14px}
+.tr{display:flex;align-items:center;gap:8px}
+.sw{width:14px;height:5px;border-radius:3px;flex:none}
+.tr .k{font-weight:800;min-width:30px}
+.tr .why{color:var(--muted);font-size:13px}
+.tr .val{margin-left:auto;font-weight:800}
+.why-box{font-size:14px;line-height:1.45}
+.why-box b{color:var(--ink)}
+
+/* varsayımlar */
+.builder{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;line-height:1.6;font-size:14.5px}
+.builder select{border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;padding:4px 6px;font-weight:700;max-width:100%}
+.builder textarea{border:1px solid var(--line);border-radius:10px;padding:8px;resize:vertical;min-height:58px;background:var(--bg)}
+.or{font-size:12px;font-weight:800;color:var(--muted);text-align:center;letter-spacing:.06em}
+.hyp{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.hyp.ok{border-left-color:var(--ok)}.hyp.bad{border-left-color:var(--warn)}
+.st{align-self:flex-start;font:800 12px var(--body);padding:3px 9px;border-radius:99px;background:var(--bg);color:var(--muted)}
+.st.ok{background:var(--ok-soft);color:var(--ok)}.st.bad{background:var(--warn-soft);color:var(--warn)}
+.htext{font-weight:700;line-height:1.4}
+.ev{font-size:13px;color:var(--muted);line-height:1.4}
+.ev b{color:var(--ink)}
+.contrib{border-top:1px dashed var(--line);padding-top:7px;display:flex;flex-direction:column;gap:6px}
+.contrib .q{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.contrib .note{font-size:13.5px;line-height:1.4}
+
+/* kayıtlar */
+.rtbl{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.rtbl th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;padding:4px 4px;border-bottom:1px solid var(--line)}
+.rtbl td{padding:6px 4px;border-bottom:1px solid var(--line)}
+.goals{display:flex;gap:6px;flex-wrap:wrap}
+.goal{font-weight:800;font-size:13px;padding:5px 10px;border-radius:99px;border:1px dashed var(--line);color:var(--muted)}
+.goal.done{border-style:solid;color:#fff}
+
+@media (max-width:760px){
+  html,body{height:auto}
+  body{grid-template-columns:1fr}
+  .board-wrap{position:relative;height:58svh;min-height:340px}
+  .controls{position:static;margin:0 12px 12px;box-shadow:none;width:auto}
+}
+@media (prefers-reduced-motion:reduce){#name.pop{animation:none}.toast{transition:none}}
+
+/* güncelleme ve imza */
+.update{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:14px;margin-top:auto}
+.update .chip{align-self:flex-start}
+#upMsg{font-size:13px}
+#upMsg.new{color:var(--ok);font-weight:800}
+.credit{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));font:800 12px var(--body);letter-spacing:.05em;color:var(--muted);background:var(--bg);padding:3px 10px;border-radius:99px;pointer-events:none;z-index:5}
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="board-wrap" id="wrap">
+    <svg id="board" role="img" aria-label="Çember çizim alanı">
+      <defs><pattern id="gp" width="1" height="1" patternUnits="userSpaceOnUse"><path class="gl" d="M1 0H0V1"/></pattern></defs>
+      <rect id="gridRect" fill="url(#gp)"/>
+      <g id="layer"></g>
+    </svg>
+    <div class="tip" id="tip">Çemberleri tutup sürükle</div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <div class="controls" id="ctrl">
+    <div class="toprow">
+      <button class="big" id="addC">+ Çember ekle</button>
+      <div class="segctl" role="group" aria-label="Çizim kipi">
+        <button id="mMove" aria-pressed="true">Taşı</button>
+        <button id="mSeg" aria-pressed="false">Doğru parçası çiz</button>
+      </div>
+    </div>
+    <div class="clist" id="clist"></div>
+    <div class="row">
+      <button class="chip" id="quick">Hızlı üçgen</button>
+      <button class="chip" id="undo">Son parçayı geri al</button>
+      <button class="chip" id="clearSeg">Parçaları sil</button>
+      <button class="chip" id="clearAll">Hepsini temizle</button>
+    </div>
+    <div class="row">
+      <label class="tog"><input type="checkbox" id="snap" checked> Kareli zemine yapış</label>
+      <label class="tog"><input type="checkbox" id="showR" checked> Yarıçapları göster</label>
+      <label class="tog"><input type="checkbox" id="showL" checked> Uzunlukları göster</label>
+    </div>
+  </div>
+</main>
+
+<aside class="panel">
+  <div>
+    <div class="eyebrow" id="family">Kesişen çemberler</div>
+    <h1 id="name"></h1>
+  </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tb0" aria-selected="true" data-tab="0">Üçgen</button>
+    <button role="tab" id="tb1" aria-selected="false" data-tab="1">Varsayımlar<span class="cnt" id="nH">0</span></button>
+    <button role="tab" id="tb2" aria-selected="false" data-tab="2">Kayıtlar<span class="cnt" id="nR">0</span></button>
+  </div>
+
+  <section class="tab" id="tab0" role="tabpanel">
+    <section id="pairSec"><h2>Çemberler</h2><ul class="pairs" id="pairs"></ul></section>
+    <div id="tris"></div>
+    <div class="hint" id="hint"></div>
+  </section>
+
+  <section class="tab" id="tab1" role="tabpanel" hidden>
+    <p class="empty"><b style="color:var(--ink)">Önce tahmin et, sonra çizerek dene.</b> İki çemberin merkezleri ve kesişim noktalarından biriyle bir üçgen kurulur. Sence hangi durumda hangi üçgen oluşur?</p>
+    <div class="builder">
+      <div class="c-label">Varsayımımı yazıyorum</div>
+      <div>Eğer
+        <select id="hCond" aria-label="Koşul">
+          <option value="eqR">iki çemberin yarıçapları eşit</option>
+          <option value="neqR">iki çemberin yarıçapları farklı</option>
+          <option value="eqAll">iki yarıçap da merkezler arası uzaklığa eşit</option>
+          <option value="oneD">yarıçaplardan biri merkezler arası uzaklığa eşit</option>
+          <option value="allDiff">iki yarıçap ve merkezler arası uzaklık birbirinden farklı</option>
+        </select>
+        ise, iki merkez ve bir kesişim noktasıyla kurulan üçgen
+        <select id="hConc" aria-label="Sonuç">
+          <option value="ikiz">ikizkenar</option>
+          <option value="es">eşkenar</option>
+          <option value="cesit">çeşitkenar</option>
+        </select>
+        üçgen olur.
+      </div>
+      <button class="chip solid" id="hAdd" style="align-self:flex-start">Varsayımı ekle</button>
+      <div class="or">YA DA</div>
+      <textarea id="hFree" placeholder="Kendi cümlenle yaz. Örnek: Çemberler büyüdükçe üçgen de büyür."></textarea>
+      <button class="chip" id="hAddFree" style="align-self:flex-start">Kendi varsayımımı ekle</button>
+    </div>
+    <div id="hyps"></div>
+  </section>
+
+  <section class="tab" id="tab2" role="tabpanel" hidden>
+    <section><h2>Bulduğun üçgen türleri</h2><div class="goals" id="goals"></div></section>
+    <p class="empty">Kurduğun üçgeni <b style="color:var(--ink)">Üçgen</b> sekmesindeki <b style="color:var(--ink)">Kaydet</b> düğmesiyle buraya ekle. Varsayımların bu kayıtlarla sınanır.</p>
+    <div id="recs"></div>
+    <button class="chip" id="recClear" style="align-self:flex-start" hidden>Kayıtları temizle</button>
+  </section>
+
+  <div class="update">
+    <div class="row">
+      <button class="chip" id="upBtn">Güncellemeleri denetle</button>
+      <button class="chip" id="upApply" hidden>Şimdi güncelle</button>
+    </div>
+    <a class="chip" id="apkLink" hidden href="#" target="_blank" rel="noopener">Yeni APK’yı indir</a>
+    <p class="empty" id="upMsg"></p>
+  </div>
+</aside>
+<div class="credit">made by us</div>
+
+<script>
+const svg=document.getElementById('board'),layer=document.getElementById('layer'),gridRect=document.getElementById('gridRect'),wrap=document.getElementById('wrap');
+const $=id=>document.getElementById(id);
+const LETTERS='ABCD';
+const CCOL={A:'var(--c5)',B:'var(--c4)',C:'var(--c3)',D:'var(--c6)'};
+const PAIRS=[['A','B'],['A','C'],['A','D'],['B','C'],['B','D'],['C','D']];
+const PLAB=[['K','L'],['M','N'],['P','R'],['S','T'],['U','V'],['Y','Z']];
+const GCOL=['var(--c1)','var(--c2)','var(--c3)','var(--c4)'];
+const TYPE={cesit:{ad:'Çeşitkenar',cls:'b-cesit',col:'var(--t-cesit)'},ikiz:{ad:'İkizkenar',cls:'b-ikiz',col:'var(--t-ikiz)'},es:{ad:'Eşkenar',cls:'b-es',col:'var(--t-es)'}};
+const EQ=0.02,TOUCH=1e-7;
+const f=x=>+x.toFixed(4);
+const fmt=x=>{const a=Math.round(x*10)/10,v=Math.abs(x-a)<0.005?a:Math.round(x*100)/100;return v.toLocaleString('tr-TR',{maximumFractionDigits:2})};
+const same=(a,b)=>Math.abs(a-b)<EQ;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- durum ---------- */
+const S={circles:[],segs:[],mode:'move',snap:true,showR:true,showL:true,sel:null,start:null,press:null,rubber:null,drag:null,hoverC:null,hoverP:null,tab:0};
+let hyps=[],recs=[];
+const view={W:16,H:11,y0:-5.5,y1:5.5};
+const KEY='cember-atolyesi-v1';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({circles:S.circles,segs:S.segs,snap:S.snap,showR:S.showR,showL:S.showL,hyps,recs}))}catch(_){}}
+function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(!j)return;
+  if(Array.isArray(j.circles))S.circles=j.circles.filter(c=>LETTERS.includes(c.id)&&isFinite(c.x)&&isFinite(c.y)&&isFinite(c.r));
+  if(Array.isArray(j.segs))S.segs=j.segs.filter(s=>Array.isArray(s)&&s.length===2);
+  ['snap','showR','showL'].forEach(k=>{if(typeof j[k]==='boolean')S[k]=j[k]});
+  if(Array.isArray(j.hyps))hyps=j.hyps;if(Array.isArray(j.recs))recs=j.recs;
+}catch(_){}}
+
+/* ---------- geometri ---------- */
+function meet(c1,c2){
+  const dx=c2.x-c1.x,dy=c2.y-c1.y,d=Math.hypot(dx,dy);
+  if(d<1e-9)return {kind:Math.abs(c1.r-c2.r)<1e-9?'same':'inside',pts:[],d};
+  if(d>c1.r+c2.r+TOUCH)return {kind:'apart',pts:[],d};
+  if(d<Math.abs(c1.r-c2.r)-TOUCH)return {kind:'inside',pts:[],d};
+  const a=(c1.r*c1.r-c2.r*c2.r+d*d)/(2*d),h2=c1.r*c1.r-a*a,ux=dx/d,uy=dy/d,mx=c1.x+a*ux,my=c1.y+a*uy;
+  if(h2<=1e-9)return {kind:'touch',pts:[{x:mx,y:my}],d};
+  const h=Math.sqrt(h2);
+  // K: A→B yönünün solunda (ekranda A solda, B sağdaysa üstte) kalan nokta
+  return {kind:'two',pts:[{x:mx+h*uy,y:my-h*ux},{x:mx-h*uy,y:my+h*ux}],d};
+}
+function circleById(id){return S.circles.find(c=>c.id===id)}
+/* tüm noktalar: merkezler ve kesişim noktaları */
+function buildPoints(){
+  const pts={},pairInfo=[];
+  S.circles.forEach(c=>{pts[c.id]={id:c.id,x:c.x,y:c.y,center:true,on:[]}});
+  PAIRS.forEach(([a,b],k)=>{
+    const A=circleById(a),B=circleById(b);if(!A||!B)return;
+    const m=meet(A,B),labs=[];
+    m.pts.forEach((p,i)=>{const id=PLAB[k][i];labs.push(id);pts[id]={id,x:p.x,y:p.y,center:false,on:[a,b],mid:{x:(A.x+B.x)/2,y:(A.y+B.y)/2},dir:{x:B.x-A.x,y:B.y-A.y}}});
+    pairInfo.push({a,b,kind:m.kind,labs,d:m.d});
+  });
+  // başka bir çemberin üstüne de düşen kesişim noktaları (ör. üç çember aynı noktadan geçerse)
+  Object.values(pts).forEach(p=>{if(p.center)return;S.circles.forEach(c=>{if(!p.on.includes(c.id)&&Math.abs(Math.hypot(p.x-c.x,p.y-c.y)-c.r)<1e-6)p.on.push(c.id)})});
+  return {pts,pairInfo};
+}
+function segKey(a,b){return a<b?a+'|'+b:b+'|'+a}
+function liveSegs(pts){return S.segs.filter(([a,b])=>pts[a]&&pts[b])}
+function sideWhy(p,q){
+  if(p.center&&q.center)return 'merkezler arası uzaklık';
+  const c=p.center?p:q.center?q:null,o=c===p?q:p;
+  if(c&&o.on.includes(c.id))return `${c.id} çemberinin yarıçapı`;
+  return '';
+}
+function findTriangles(pts){
+  const segs=liveSegs(pts),adj={};
+  segs.forEach(([a,b])=>{(adj[a]=adj[a]||new Set()).add(b);(adj[b]=adj[b]||new Set()).add(a)});
+  const ids=Object.keys(adj).sort(),out=[];
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){if(!adj[ids[i]].has(ids[j]))continue;
+    for(let k=j+1;k<ids.length;k++){if(adj[ids[i]].has(ids[k])&&adj[ids[j]].has(ids[k]))out.push(analyzeTri([ids[i],ids[j],ids[k]].map(id=>pts[id])))}}
+  return out;
+}
+function analyzeTri(V){
+  // ad: merkez, kesişim, merkez sırası (ör. AKB); değilse alfabetik
+  const cs=V.filter(p=>p.center),is=V.filter(p=>!p.center);
+  let order=V;
+  if(cs.length===2&&is.length===1)order=[cs[0],is[0],cs[1]];
+  else if(cs.length===1&&is.length===2)order=[is[0],cs[0],is[1]];
+  const [p,q,r]=order,area=((q.x-p.x)*(r.y-p.y)-(q.y-p.y)*(r.x-p.x))/2;
+  // kenar adı: merkez önce (AK, BK), iki merkez ya da iki kesişim noktası alfabetik (AB)
+  const nm=(a,b)=>a.center!==b.center?(a.center?a.id+b.id:b.id+a.id):[a.id,b.id].sort().join('');
+  const sides=[[p,q],[q,r],[r,p]].map(([a,b])=>({a:a.id,b:b.id,k:nm(a,b),L:Math.hypot(b.x-a.x,b.y-a.y),why:sideWhy(a,b)}));
+  const name=order.map(x=>x.id).join('');
+  const T={name,ids:order.map(x=>x.id),sides,pts:order,collinear:Math.abs(area)<1e-6};
+  const [x,y,z]=sides.map(s=>s.L);
+  const e1=same(x,y),e2=same(y,z),e3=same(x,z);
+  T.type=T.collinear?null:(e1&&e2&&e3)?'es':(e1||e2||e3)?'ikiz':'cesit';
+  // iki merkez + bu iki çemberin kesişim noktası mı?
+  T.cci=false;
+  if(cs.length===2&&is.length===1&&is[0].on.includes(cs[0].id)&&is[0].on.includes(cs[1].id)){
+    const A=circleById(cs[0].id),B=circleById(cs[1].id);
+    T.cci=true;T.c1=A.id;T.c2=B.id;T.inter=is[0].id;T.r1=A.r;T.r2=B.r;T.d=Math.hypot(B.x-A.x,B.y-A.y);
+  }
+  return T;
+}
+
+/* ---------- çizim ---------- */
+let pending=false;
+function requestRender(){if(!pending){pending=true;requestAnimationFrame(render)}}
+let last={pts:{},tris:[],pairInfo:[]};
+function render(){
+  pending=false;
+  const {pts,pairInfo}=buildPoints(),tris=findTriangles(pts),segs=liveSegs(pts);
+  last={pts,tris,pairInfo};
+  let h='';
+  if(!S.circles.length)h+=`<text class="empty-msg" x="0" y="${f((view.y0+view.y1)/2)}">“+ Çember ekle” düğmesine bas</text>`;
+  // çemberler
+  S.circles.forEach(c=>{h+=`<circle class="cfill" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="fill:${CCOL[c.id]}"/>`});
+  S.circles.forEach(c=>{h+=`<circle class="cline${S.sel===c.id||S.hoverC===c.id?' sel':''}" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="stroke:${CCOL[c.id]}"/>`});
+  // üçgen boyaları
+  tris.forEach(T=>{if(T.type)h+=`<polygon class="tfill" points="${T.pts.map(p=>f(p.x)+','+f(p.y)).join(' ')}" style="fill:${TYPE[T.type].col}"/>`});
+  // yarıçap çizgileri
+  if(S.showR)S.circles.forEach(c=>{
+    const others=S.circles.filter(o=>o!==c);let ang=Math.PI*0.8;
+    if(others.length){const ox=others.reduce((s,o)=>s+o.x,0)/others.length,oy=others.reduce((s,o)=>s+o.y,0)/others.length;if(Math.hypot(c.x-ox,c.y-oy)>1e-6)ang=Math.atan2(c.y-oy,c.x-ox)}
+    ang+=0.5; // merkezleri birleştiren doğrunun biraz altına
+    const q={x:c.x+c.r*Math.cos(ang),y:c.y+c.r*Math.sin(ang)},m={x:(c.x+q.x)/2,y:(c.y+q.y)/2},nx=-Math.sin(ang),ny=Math.cos(ang);
+    h+=`<line class="rline" x1="${f(c.x)}" y1="${f(c.y)}" x2="${f(q.x)}" y2="${f(q.y)}" style="stroke:${CCOL[c.id]}"/>`;
+    h+=`<text class="rt" x="${f(m.x+nx*.34)}" y="${f(m.y+ny*.34)}" style="fill:${CCOL[c.id]}">r = ${fmt(c.r)}</text>`;
+  });
+  // doğru parçaları, eşit olanlar aynı renk ve aynı sayıda çentik
+  const Ls=segs.map(([a,b])=>Math.hypot(pts[b].x-pts[a].x,pts[b].y-pts[a].y));
+  const gid=groupEqual(Ls);
+  segGroups={};segs.forEach((s,i)=>{segGroups[segKey(s[0],s[1])]=gid[i]});
+  const lens=[];
+  segs.forEach(([a,b],i)=>{
+    const p=pts[a],q=pts[b],L=Ls[i],g=gid[i],col=g>=0?GCOL[g%GCOL.length]:'var(--ink)';
+    h+=`<line class="seg" x1="${f(p.x)}" y1="${f(p.y)}" x2="${f(q.x)}" y2="${f(q.y)}" style="stroke:${col}"/>`;
+    if(L<1e-6)return;
+    const u={x:(q.x-p.x)/L,y:(q.y-p.y)/L};let nr={x:-u.y,y:u.x};const mid={x:(p.x+q.x)/2,y:(p.y+q.y)/2};
+    if(g>=0){const k=Math.min(3,g+1);for(let j=0;j<k;j++){const o=(j-(k-1)/2)*.17,c={x:mid.x+u.x*o,y:mid.y+u.y*o};
+      h+=`<line class="tick" x1="${f(c.x-nr.x*.24)}" y1="${f(c.y-nr.y*.24)}" x2="${f(c.x+nr.x*.24)}" y2="${f(c.y+nr.y*.24)}" style="stroke:${col}"/>`}}
+    if(S.showL){
+      // yazıyı, parçanın ait olduğu üçgenin dışına koy
+      const T=tris.find(t=>t.ids.includes(a)&&t.ids.includes(b));
+      if(T){const cx=T.pts.reduce((s,x)=>s+x.x,0)/3,cy=T.pts.reduce((s,x)=>s+x.y,0)/3;if((mid.x-cx)*nr.x+(mid.y-cy)*nr.y<0)nr={x:-nr.x,y:-nr.y}}
+      else if(nr.y>0)nr={x:-nr.x,y:-nr.y};
+      lens.push(`<text class="lt" x="${f(mid.x+nr.x*.45)}" y="${f(mid.y+nr.y*.45)}">${fmt(L)}</text>`);
+    }
+  });
+  h+=lens.join('');
+  // lastik çizgi
+  if(S.start&&S.rubber&&pts[S.start])h+=`<line class="rubber" x1="${f(pts[S.start].x)}" y1="${f(pts[S.start].y)}" x2="${f(S.rubber.x)}" y2="${f(S.rubber.y)}"/>`;
+  // noktalar
+  Object.values(pts).forEach(p=>{
+    const segMode=S.mode==='seg',isStart=S.start===p.id,hov=S.hoverP===p.id;
+    if(segMode)h+=`<circle class="halo${isStart?' start':''}" cx="${f(p.x)}" cy="${f(p.y)}" r="${isStart||hov?.5:.36}"/>`;
+    if(p.center)h+=`<circle class="cdot" cx="${f(p.x)}" cy="${f(p.y)}" r="${S.sel===p.id&&!segMode?.26:.2}" style="fill:${CCOL[p.id]}"/>`;
+    else h+=`<circle class="idot" cx="${f(p.x)}" cy="${f(p.y)}" r=".17"/>`;
+    let lx,ly;
+    if(p.center){lx=p.x;ly=p.y+.62}
+    else{let dx=p.x-p.mid.x,dy=p.y-p.mid.y,l=Math.hypot(dx,dy);if(l<1e-6){dx=-p.dir.y;dy=p.dir.x;l=Math.hypot(dx,dy)||1}lx=p.x+dx/l*.58;ly=p.y+dy/l*.58}
+    h+=`<text class="pl" x="${f(lx)}" y="${f(ly)}"${p.center?` style="fill:${CCOL[p.id]}"`:''}>${p.id}</text>`;
+  });
+  layer.innerHTML=h;
+  syncRows();
+  panel(pts,pairInfo,tris);
+  save();
+}
+let segGroups={};
+function groupEqual(L){
+  const m=L.length,par=[...Array(m).keys()],find=i=>par[i]===i?i:(par[i]=find(par[i]));
+  for(let i=0;i<m;i++)for(let j=i+1;j<m;j++)if(same(L[i],L[j]))par[find(i)]=find(j);
+  const map=new Map();for(let i=0;i<m;i++){const r=find(i);if(!map.has(r))map.set(r,[]);map.get(r).push(i)}
+  const gid=Array(m).fill(-1);[...map.values()].filter(g=>g.length>1).sort((a,b)=>a[0]-b[0]).forEach((g,k)=>g.forEach(i=>gid[i]=k));
+  return gid;
+}
+
+/* ---------- panel ---------- */
+let lastName='';
+function setName(t){const el=$('name');if(t!==lastName){el.textContent=t;el.classList.remove('pop');void el.offsetWidth;if(lastName)el.classList.add('pop');lastName=t}svg.setAttribute('aria-label','Çizim alanı: '+t)}
+const KIND={two:'iki noktada kesişiyor',touch:'teğet: tek noktada değiyor',apart:'kesişmiyor: birbirinden uzak',inside:'kesişmiyor: biri diğerinin içinde',same:'üst üste'};
+function panel(pts,pairInfo,tris){
+  const n=S.circles.length;
+  // çember çiftleri
+  $('pairSec').hidden=n<2;
+  $('pairs').innerHTML=pairInfo.map(P=>`<li><span class="k">${P.a} ve ${P.b}</span><span class="s${P.kind==='two'?' on':''}">${KIND[P.kind]}${P.labs.length?` (${P.labs.join(', ')})`:''}</span></li>`).join('');
+  const good=tris.filter(t=>t.type);
+  // başlık
+  if(good.length){const T=good[good.length-1];setName(TYPE[T.type].ad+' üçgen');$('family').textContent=T.name+' üçgeni'}
+  else{$('family').textContent='Kesişen çemberler';setName(n===0?'Çember yok':n===1?'Tek çember':pairInfo.some(p=>p.kind==='two')?'Üçgeni kur':'Çemberleri kesiştir')}
+  // üçgen kartları
+  $('tris').innerHTML=tris.map((T,i)=>triCard(T,i)).join('');
+  $('tris').querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>saveRec(last.tris[+b.dataset.save]));
+  // ipucu
+  let hint='';
+  if(n===0)hint='“+ Çember ekle” düğmesine bas. Sonra bir çember daha ekle.';
+  else if(n===1)hint='Bir çember daha ekle. İki çemberin kesiştiği noktaları birlikte bulacağız.';
+  else if(!pairInfo.some(p=>p.kind==='two'))hint=pairInfo.some(p=>p.kind==='touch')?'Çemberler yalnızca bir noktada değiyor. Birini biraz daha yaklaştır ya da yarıçapını büyüt: iki kesişim noktası oluşur.':'Çemberlerden birini diğerine doğru sürükle ya da sürgüyle yarıçapını değiştir. Kesişince iki nokta oluşur.';
+  else if(!tris.length){const P=pairInfo.find(p=>p.kind==='two');hint=`<b>Doğru parçası çiz</b> kipine geç. Sırayla ${P.a} ile ${P.b}, ${P.a} ile ${P.labs[0]}, ${P.b} ile ${P.labs[0]} noktalarına dokun. Ya da <b>Hızlı üçgen</b> düğmesine bas.`}
+  else{const T=good.find(t=>t.cci)||good[0];hint=T?nextHint(T):'Üç nokta aynı doğru üzerinde kaldı. Çemberleri hareket ettir.'}
+  $('hint').innerHTML=`<b class="h">Şimdi dene</b>${hint}`;
+  $('nH').textContent=hyps.length;$('nR').textContent=recs.length;
+  renderHyps();
+}
+function triCard(T,i){
+  if(T.collinear)return `<div class="card"><div class="card-h"><span class="tname">${T.name}</span><span class="badge b-none">Üçgen oluşmaz</span></div><p class="empty">${T.ids.join(', ')} noktaları aynı doğru üzerinde. Çemberler teğetken kesişim noktası merkezleri birleştiren doğrunun üstüne düşer.</p></div>`;
+  const gk=s=>segGroups[segKey(s.a,s.b)];
+  const rows=T.sides.map(s=>{const g=gk(s),col=g>=0?GCOL[g%GCOL.length]:'var(--line)';return `<div class="tr"><span class="sw" style="background:${col}"></span><span class="k">${s.k}</span><span class="why">${s.why}</span><span class="val">${fmt(s.L)} birim</span></div>`}).join('');
+  return `<div class="card"><div class="card-h"><span class="tname">${T.name} üçgeni</span><span class="badge ${TYPE[T.type].cls}">${TYPE[T.type].ad}</span><button class="chip" data-save="${i}" style="margin-left:auto">Kaydet</button></div>
+    <div class="tbl">${rows}</div><div class="why-box">${explain(T)}</div></div>`;
+}
+function explain(T){
+  const eqTxt={cesit:'Üç kenarın uzunluğu da birbirinden farklı.',ikiz:'İki kenarı eşit uzunlukta.',es:'Üç kenarı da eşit uzunlukta.'}[T.type];
+  if(!T.cci)return `${eqTxt} <span style="color:var(--muted)">Bu üçgen iki merkez ve bu iki çemberin kesişim noktasıyla kurulmadı.</span>`;
+  const {c1,c2,inter:K,r1,r2,d}=T,a=c1+K,b=c2+K,ab=c1+c2;
+  let w=`<b>${a}</b> ve <b>${b}</b> kenarları yarıçaptır. <b>${ab}</b> merkezler arası uzaklıktır. `;
+  if(T.type==='es')w+=`İki yarıçap da merkezler arası uzaklığa eşit (${fmt(r1)}), bu yüzden üç kenar da eşit.`;
+  else if(T.type==='ikiz'){
+    if(same(r1,r2))w+=`Yarıçaplar eşit (${fmt(r1)}) olduğu için ${a} = ${b}.`;
+    else w+=`${same(r1,d)?a:b} = ${ab}: bir yarıçap merkezler arası uzaklığa eşit.`;
+  }else w+=`Yarıçaplar (${fmt(r1)} ve ${fmt(r2)}) ve merkezler arası uzaklık (${fmt(d)}) farklı, bu yüzden kenarların hepsi farklı.`;
+  return w;
+}
+function nextHint(T){
+  if(!T.cci)return 'İki çemberin merkezlerini ve bu iki çemberin kesişim noktasını birleştirerek bir üçgen kur.';
+  const {c1,c2}=T;
+  if(T.type==='cesit')return `${c1} ve ${c2} çemberlerinin yarıçaplarını eşitle. Üçgen nasıl değişti?`;
+  if(T.type==='ikiz')return same(T.r1,T.r2)?`Yarıçapları eşit tutarak merkezleri, yarıçap kadar (${fmt(T.r1)} birim) uzaklaştır. Hangi üçgen oluştu?`:`Diğer yarıçapı da aynı uzunluğa getir. Ne oldu?`;
+  return `Harika! Şimdi tek bir çemberin yarıçapını değiştir. Üçgen hangi türe dönüştü? Bulduğunu <b>Kaydet</b>.`;
+}
+
+/* ---------- varsayımlar ve önermeler ---------- */
+const COND={eqR:'iki çemberin yarıçapları eşit',neqR:'iki çemberin yarıçapları farklı',eqAll:'iki yarıçap da merkezler arası uzaklığa eşit',oneD:'yarıçaplardan biri merkezler arası uzaklığa eşit',allDiff:'iki yarıçap ve merkezler arası uzaklık birbirinden farklı'};
+const CONC={ikiz:'ikizkenar',es:'eşkenar',cesit:'çeşitkenar'};
+const condOk=(c,r1,r2,d)=>({eqR:same(r1,r2),neqR:!same(r1,r2),eqAll:same(r1,r2)&&same(r1,d),oneD:same(r1,d)||same(r2,d),allDiff:!same(r1,r2)&&!same(r1,d)&&!same(r2,d)})[c];
+const fits=(concl,type)=>concl===type||(concl==='ikiz'&&type==='es');
+const CONTRIB=['İstediğim türde üçgeni nasıl çizeceğimi gösteriyor','Üçgeni çizmeden türünü tahmin etmemi sağlıyor','Kenarları ölçmeden neden eşit olduklarını açıklıyor','Yanlış bir düşüncemi düzeltti'];
+function hypText(H){return H.kind==='free'?H.text:`Eğer ${COND[H.cond]} ise, iki merkez ve bir kesişim noktasıyla kurulan üçgen ${CONC[H.concl]} üçgen olur.`}
+function judge(H){
+  if(H.kind==='free')return {st:H.manual==='yes'?'ok':H.manual==='no'?'bad':'',sup:0,con:[]};
+  const sup=[],con=[];
+  recs.forEach(R=>{if(!R.cci||!condOk(H.cond,R.r1,R.r2,R.d))return;(fits(H.concl,R.type)?sup:con).push(R)});
+  return {st:con.length?'bad':sup.length?'ok':'',sup,con};
+}
+function renderHyps(){
+  const el=$('hyps');
+  if(!hyps.length){el.innerHTML='<p class="empty">Henüz varsayım yok. Yukarıdan bir tane ekle.</p>';return}
+  const cur=last.tris.find(t=>t.cci&&t.type);
+  el.innerHTML=hyps.map((H,i)=>{
+    const J=judge(H);let st,ev='';
+    if(H.kind==='free'){
+      st=J.st==='ok'?'Doğruladım':J.st==='bad'?'Yanlış çıktı':'Sınanmadı';
+      ev=`<div class="row"><button class="chip" data-man="${i}:yes" aria-pressed="${H.manual==='yes'}">Örneklerle doğruladım</button><button class="chip" data-man="${i}:no" aria-pressed="${H.manual==='no'}">Yanlış çıktı</button></div>`;
+    }else{
+      st=J.st==='bad'?'Yanlışlandı':J.st==='ok'?`Örneklerle doğrulandı · ${J.sup.length} örnek`:'Sınanmadı';
+      if(J.con.length){const R=J.con[0];ev+=`<div class="ev">Karşı örnek: <b>${R.name}</b> üçgeninde koşul sağlandı ama üçgen <b>${TYPE[R.type].ad.toLocaleLowerCase('tr')}</b> çıktı.</div>`}
+      else if(J.sup.length)ev+=`<div class="ev">Koşula uyan <b>${J.sup.length}</b> kayıtlı üçgenin hepsi varsayıma uyuyor.${J.sup.some(R=>R.type==='es')&&H.concl==='ikiz'?' (Eşkenar üçgenin de iki kenarı eşit olduğu için o da ikizkenardır.)':''}</div>`;
+      else ev+='<div class="ev">Koşula uyan bir üçgen kur ve kaydet. Kaydettiğin üçgenlerle sınanacak.</div>';
+      if(cur){const ok=condOk(H.cond,cur.r1,cur.r2,cur.d);ev+=`<div class="ev">Şu anki <b>${cur.name}</b> üçgeni: ${!ok?'koşulu sağlamıyor.':fits(H.concl,cur.type)?'koşulu sağlıyor ve varsayıma <b style="color:var(--ok)">uyuyor</b>.':'koşulu sağlıyor ama varsayıma <b style="color:var(--warn)">uymuyor</b>.'}</div>`}
+    }
+    let c='';
+    if(J.st){
+      const note=J.st==='bad'?'Yanlış çıkan varsayım da bir şey öğretir: koşulu ya da sonucu değiştirip yeni bir varsayım yaz.':H.kind==='auto'?contribNote(H):'';
+      c=`<div class="contrib"><div class="q">Bu önermenin katkısı ne?</div>${note?`<div class="note">${note}</div>`:''}<div class="row">${CONTRIB.map((t,k)=>`<button class="chip" data-ev="${i}:${k}" aria-pressed="${(H.eval||[]).includes(k)}">${t}</button>`).join('')}</div></div>`;
+    }
+    return `<div class="hyp ${J.st}"><span class="st ${J.st}">${st}</span><div class="htext">${esc(hypText(H))}</div>${ev}
+      <div class="row">${H.kind==='auto'?`<button class="chip" data-ex="${i}">Örnek kur</button>`:''}<button class="chip" data-del="${i}">Sil</button></div>${c}</div>`;
+  }).join('');
+  el.querySelectorAll('[data-man]').forEach(b=>b.onclick=()=>{const [i,v]=b.dataset.man.split(':');hyps[i].manual=hyps[i].manual===v?null:v;requestRender()});
+  el.querySelectorAll('[data-ev]').forEach(b=>b.onclick=()=>{const [i,k]=b.dataset.ev.split(':').map(Number),E=hyps[i].eval=hyps[i].eval||[];const x=E.indexOf(k);x<0?E.push(k):E.splice(x,1);requestRender()});
+  el.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{hyps.splice(+b.dataset.del,1);requestRender()});
+  el.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>buildExample(hyps[+b.dataset.ex].cond));
+}
+function contribNote(H){
+  const T={eqR:'Pergeli aynı açıklıkta tutup iki çember çizersen ikizkenar üçgen kurabilirsin.',eqAll:'Pergeli merkezler arası uzaklık kadar açıp iki çember çizersen eşkenar üçgen kurabilirsin. Cetvelle ölçmene gerek kalmaz.',oneD:'Bir çemberin yarıçapını merkezler arası uzaklığa eşitlemek, ikizkenar üçgen kurmanın bir başka yoludur.',neqR:'Yarıçaplar farklıyken bile üçgen ikizkenar çıkabilir mi? Kayıtlarına bak.',allDiff:'Üç uzunluğu da farklı seçersen çeşitkenar üçgen elde edersin.'};
+  return T[H.cond]||'';
+}
+$('hAdd').onclick=()=>{
+  const H={kind:'auto',cond:$('hCond').value,concl:$('hConc').value,eval:[]};
+  if(hyps.some(x=>x.kind==='auto'&&x.cond===H.cond&&x.concl===H.concl)){toast('Bu varsayım zaten listende.');return}
+  hyps.push(H);toast('Varsayım eklendi. Şimdi çizerek sına!');requestRender();
+};
+$('hAddFree').onclick=()=>{const t=$('hFree').value.trim();if(!t){$('hFree').focus();return}hyps.push({kind:'free',text:t.slice(0,300),manual:null,eval:[]});$('hFree').value='';toast('Varsayım eklendi.');requestRender()};
+
+/* ---------- kayıtlar ---------- */
+function saveRec(T){
+  if(!T||!T.type)return;
+  const R={name:T.name,type:T.type,sides:T.sides.map(s=>({k:s.k,L:+s.L.toFixed(3)})),cci:T.cci};
+  if(T.cci){R.r1=T.r1;R.r2=T.r2;R.d=+T.d.toFixed(4)}
+  const p=recs[recs.length-1];
+  if(p&&JSON.stringify(p.sides)===JSON.stringify(R.sides)&&p.type===R.type){toast('Bu üçgeni az önce kaydettin. Çemberleri değiştirip yeni bir üçgen kur.');return}
+  R.n=(recs.length?recs[recs.length-1].n:0)+1;
+  recs.push(R);toast(`Kaydedildi: ${R.name} · ${TYPE[R.type].ad} üçgen`);renderRecs();requestRender();
+}
+function renderRecs(){
+  const has=t=>recs.some(R=>R.type===t);
+  $('goals').innerHTML=['cesit','ikiz','es'].map(t=>`<span class="goal${has(t)?' done':''}" style="${has(t)?`background:${TYPE[t].col};border-color:${TYPE[t].col}`:''}">${has(t)?'✓ ':''}${TYPE[t].ad}</span>`).join('');
+  $('recClear').hidden=!recs.length;
+  if(!recs.length){$('recs').innerHTML='';return}
+  $('recs').innerHTML=`<table class="rtbl"><thead><tr><th>#</th><th>Üçgen</th><th>r₁</th><th>r₂</th><th>Merkezler arası</th><th>Tür</th></tr></thead><tbody>${recs.map(R=>`<tr><td>${R.n}</td><td><b>${R.name}</b></td><td>${R.cci?fmt(R.r1):'–'}</td><td>${R.cci?fmt(R.r2):'–'}</td><td>${R.cci?fmt(R.d):'–'}</td><td><span class="badge ${TYPE[R.type].cls}" style="font-size:11px;padding:2px 7px">${TYPE[R.type].ad}</span></td></tr>`).join('')}</tbody></table>`;
+}
+$('recClear').onclick=()=>{if(confirm('Tüm kayıtlar silinsin mi?')){recs=[];renderRecs();requestRender()}};
+
+/* ---------- çember listesi (sürgüler) ---------- */
+function rebuildRows(){
+  const el=$('clist');
+  el.innerHTML=S.circles.map(c=>`<div class="crow" data-id="${c.id}"><button class="cname" style="color:${CCOL[c.id]}" aria-label="${c.id} çemberini seç">${c.id}</button>
+    <input type="range" min="1" max="7" step="0.5" value="${c.r}" aria-label="${c.id} çemberinin yarıçapı"><span class="rval"></span>
+    <button class="del" aria-label="${c.id} çemberini sil">×</button></div>`).join('');
+  el.querySelectorAll('.crow').forEach(row=>{
+    const id=row.dataset.id;
+    row.querySelector('input').oninput=e=>{const c=circleById(id);if(c){c.r=+e.target.value;S.sel=id;requestRender()}};
+    row.querySelector('.cname').onclick=()=>{S.sel=id;requestRender()};
+    row.querySelector('.del').onclick=()=>removeCircle(id);
+  });
+  $('addC').disabled=S.circles.length>=4;
+  syncRows();
+}
+function syncRows(){
+  document.querySelectorAll('.crow').forEach(row=>{const c=circleById(row.dataset.id);if(!c)return;row.classList.toggle('sel',S.sel===c.id);row.querySelector('.rval').textContent='r = '+fmt(c.r);const inp=row.querySelector('input');if(+inp.value!==c.r)inp.value=c.r});
+}
+const SPOTS=[{x:-2,y:0},{x:2,y:0},{x:0,y:-3},{x:0,y:3}];
+function addCircle(){
+  if(S.circles.length>=4)return;
+  const id=[...LETTERS].find(l=>!circleById(l));
+  let spot=SPOTS.find(s=>!S.circles.some(c=>Math.hypot(c.x-s.x,c.y-s.y)<.5))||{x:0,y:0};
+  S.circles.push({id,x:spot.x,y:spot.y,r:3});S.sel=id;rebuildRows();requestRender();
+}
+function removeCircle(id){
+  S.circles=S.circles.filter(c=>c.id!==id);
+  if(S.sel===id)S.sel=null;if(S.start)S.start=null;
+  // silinen çembere bağlı noktaları kullanan parçalar da gider
+  const {pts}=buildPoints();S.segs=S.segs.filter(([a,b])=>pts[a]&&pts[b]);
+  rebuildRows();requestRender();
+}
+$('addC').onclick=addCircle;
+
+/* ---------- etkileşim ---------- */
+function toWorld(e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());return {x:q.x,y:q.y}}
+function nearestPoint(w,max){let best=null,bd=max;Object.values(last.pts).forEach(p=>{const d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=p.id}});return best}
+function hitCircle(w,tol){
+  if(S.mode==='move'){let b=null,bd=tol*1.6;S.circles.forEach(c=>{const d=Math.hypot(c.x-w.x,c.y-w.y);if(d<bd){bd=d;b=c}});if(b)return b}
+  let b=null,bd=tol;S.circles.forEach(c=>{const d=Math.abs(Math.hypot(c.x-w.x,c.y-w.y)-c.r);if(d<bd){bd=d;b=c}});if(b)return b;
+  const ins=S.circles.filter(c=>Math.hypot(c.x-w.x,c.y-w.y)<c.r).sort((a,b)=>a.r-b.r);return ins[0]||null;
+}
+function addSeg(a,b){
+  if(a===b)return;const k=segKey(a,b);
+  const i=S.segs.findIndex(([x,y])=>segKey(x,y)===k);
+  if(i>=0){S.segs.splice(i,1);toast(`${a}${b} doğru parçası silindi`)}else S.segs.push([a,b]);
+}
+svg.addEventListener('pointerdown',e=>{
+  const w=toWorld(e),touch=e.pointerType!=='mouse',tol=touch?.6:.38;
+  if(S.mode==='seg'){
+    const p=nearestPoint(w,touch?.75:.5);
+    if(p){
+      if(S.start&&S.start!==p){addSeg(S.start,p);S.start=null;S.press=null;S.rubber=null}
+      else{S.start=p;S.press=p;S.rubber=w}
+      try{svg.setPointerCapture(e.pointerId)}catch(_){}
+      e.preventDefault();requestRender();return;
+    }
+  }
+  const c=hitCircle(w,tol);
+  if(c){S.drag={id:c.id,off:{x:c.x-w.x,y:c.y-w.y}};S.sel=c.id;try{svg.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault();setCursor();requestRender();return}
+  if(S.start){S.start=null;requestRender()}
+});
+svg.addEventListener('pointermove',e=>{
+  const w=toWorld(e);
+  if(S.drag){
+    const c=circleById(S.drag.id);if(!c)return;
+    let x=w.x+S.drag.off.x,y=w.y+S.drag.off.y;
+    if(S.snap){x=Math.round(x);y=Math.round(y)}
+    const mx=view.W/2-.4;x=Math.max(-mx,Math.min(mx,x));y=Math.max(view.y0+.4,Math.min(view.y1-.4,y));
+    if(c.x===x&&c.y===y)return;c.x=x;c.y=y;requestRender();return;
+  }
+  if(S.start){S.rubber=w;S.hoverP=nearestPoint(w,.5);requestRender();return}
+  const hp=S.mode==='seg'?nearestPoint(w,.5):null,hc=hp?null:hitCircle(w,.38);
+  const id=hc?hc.id:null;
+  if(hp!==S.hoverP||id!==S.hoverC){S.hoverP=hp;S.hoverC=id;setCursor();requestRender()}
+});
+function endPtr(e){
+  if(S.press){
+    const w=toWorld(e),p=nearestPoint(w,e.pointerType!=='mouse'?.75:.5);
+    if(p&&p!==S.press){addSeg(S.press,p);S.start=null}
+    S.press=null;S.rubber=null;requestRender();
+  }
+  if(S.drag){S.drag=null;setCursor();requestRender()}
+}
+svg.addEventListener('pointerup',endPtr);svg.addEventListener('pointercancel',endPtr);
+svg.addEventListener('pointerleave',()=>{if(!S.drag&&!S.press&&(S.hoverC||S.hoverP)){S.hoverC=null;S.hoverP=null;setCursor();requestRender()}});
+function setCursor(){svg.style.cursor=S.drag?'grabbing':S.hoverP?'pointer':S.hoverC?'grab':''}
+
+function setMode(m){
+  S.mode=m;S.start=null;S.press=null;S.rubber=null;
+  $('mMove').setAttribute('aria-pressed',m==='move');$('mSeg').setAttribute('aria-pressed',m==='seg');
+  const t=$('tip');t.classList.toggle('seg',m==='seg');
+  t.textContent=m==='seg'?'İki noktaya sırayla dokun: aralarına doğru parçası çizilir':'Çemberleri tutup sürükle';
+  requestRender();
+}
+$('mMove').onclick=()=>setMode('move');$('mSeg').onclick=()=>setMode('seg');
+
+function quickTriangle(){
+  const {pairInfo}=buildPoints();
+  let P=pairInfo.find(p=>p.kind==='two'&&(p.a===S.sel||p.b===S.sel))||pairInfo.find(p=>p.kind==='two');
+  if(!P){toast('Önce iki çemberi iki noktada kesiştir.');return}
+  const K=P.labs[0];
+  [[P.a,P.b],[P.a,K],[P.b,K]].forEach(([a,b])=>{if(!S.segs.some(([x,y])=>segKey(x,y)===segKey(a,b)))S.segs.push([a,b])});
+  requestRender();
+}
+$('quick').onclick=quickTriangle;
+$('undo').onclick=()=>{if(S.segs.length){S.segs.pop();requestRender()}};
+$('clearSeg').onclick=()=>{S.segs=[];S.start=null;requestRender()};
+$('clearAll').onclick=()=>{S.circles=[];S.segs=[];S.sel=null;S.start=null;rebuildRows();requestRender()};
+$('snap').onchange=e=>{S.snap=e.target.checked;save()};
+$('showR').onchange=e=>{S.showR=e.target.checked;requestRender()};
+$('showL').onchange=e=>{S.showL=e.target.checked;requestRender()};
+
+/* önermenin koşuluna uyan bir örnek kur */
+function buildExample(cond){
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  let r1,r2,d;
+  if(cond==='eqR'){r1=r2=pick([3,3.5,4]);d=pick([2,3,4,5])}
+  else if(cond==='eqAll'){r1=r2=d=pick([3,4])}
+  else if(cond==='oneD'){d=4;r1=4;r2=pick([2.5,3,5,5.5])}
+  else{for(let t=0;t<50;t++){r1=pick([2.5,3,3.5,4,4.5]);r2=pick([2.5,3,3.5,4,4.5,5]);d=pick([2,3,4,5]);
+    if(!same(r1,r2)&&d<r1+r2&&d>Math.abs(r1-r2)&&(cond==='neqR'||(!same(r1,d)&&!same(r2,d))))break}}
+  const x0=-Math.floor(d/2),y0=Math.min(1,view.y1-Math.max(r1,r2)-.5);
+  S.circles=[{id:'A',x:x0,y:Math.round(y0),r:r1},{id:'B',x:x0+d,y:Math.round(y0),r:r2}];
+  S.segs=[['A','B'],['A','K'],['B','K']];S.sel='A';S.start=null;
+  rebuildRows();setTab(0);requestRender();
+  toast('Koşula uyan bir örnek kuruldu. Üçgenin türüne bak, sonra Kaydet.');
+  if(matchMedia('(max-width:760px)').matches)wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* sekmeler */
+function setTab(i){S.tab=i;[0,1,2].forEach(k=>{$('tb'+k).setAttribute('aria-selected',k===i);$('tab'+k).hidden=k!==i});if(i===2)renderRecs()}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(+b.dataset.tab));
+
+let toastT;function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2600)}
+
+document.addEventListener('keydown',e=>{
+  if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(e.key==='Escape'&&S.start){S.start=null;requestRender()}
+});
+
+/* çizim alanı, alttaki kontrol kutusunun üstünde kalan boşluğa ortalanır */
+const ctrl=$('ctrl');
+function resize(){
+  const r=wrap.getBoundingClientRect();if(!r.width||!r.height)return;
+  const over=getComputedStyle(ctrl).position==='absolute';
+  const ch=over?Math.min(ctrl.getBoundingClientRect().height+20,r.height*.55):0;
+  const free=r.height-ch;
+  const unit=Math.max(22,Math.min(56,Math.min(over?r.width/1.4:r.width,free)/11));
+  view.W=r.width/unit;view.H=r.height/unit;
+  const s=ch/2/unit;view.y0=-view.H/2+s;view.y1=view.H/2+s;
+  const x0=-view.W/2;
+  svg.setAttribute('viewBox',`${x0} ${view.y0} ${view.W} ${view.H}`);
+  gridRect.setAttribute('x',x0);gridRect.setAttribute('y',view.y0);gridRect.setAttribute('width',view.W);gridRect.setAttribute('height',view.H);
+  requestRender();
+}
+new ResizeObserver(resize).observe(wrap);new ResizeObserver(resize).observe(ctrl);
+
+load();
+$('snap').checked=S.snap;$('showR').checked=S.showR;$('showL').checked=S.showL;
+rebuildRows();renderRecs();resize();render();
+
+/* ---------- güncelleme ---------- */
+const APP_VERSION='1.0.0';
+const UPDATE={owner:'Ekerem',repo:'cember-atolyesi'};
+const PAGE_URL=`https://${UPDATE.owner.toLowerCase()}.github.io/${UPDATE.repo}/`;
+const APK_URL=`https://github.com/${UPDATE.owner}/${UPDATE.repo}/releases/latest/download/cember-atolyesi.apk`;
+const cmpV=(a,b)=>{const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0?1:-1}return 0};
+const apkVersion=(()=>{try{return window.AndroidApp&&AndroidApp.apkVersion()}catch(_){return null}})();
+function upMsg(t,isNew){const el=$('upMsg');el.textContent=t;el.classList.toggle('new',!!isNew)}
+const baseMsg=()=>`Sürüm ${APP_VERSION}`+(apkVersion?` · uygulama ${apkVersion}`:'');
+async function checkUpdate(silent){
+  if(!silent)upMsg('Denetleniyor…');
+  try{
+    const r=await fetch(PAGE_URL+'version.json?t='+Date.now(),{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    const j=await r.json();
+    const newer=cmpV(j.version,APP_VERSION)>0;
+    const apkOld=apkVersion&&j.apkMin&&cmpV(j.apkMin,apkVersion)>0;
+    $('upApply').hidden=!newer;
+    const a=$('apkLink');a.hidden=!apkOld;a.href=APK_URL;
+    if(newer)upMsg(`Yeni sürüm hazır: ${j.version}${j.notes?' · '+j.notes:''}`,true);
+    else if(apkOld)upMsg('Uygulamanın yeni bir APK sürümü var.',true);
+    else if(!silent)upMsg(`En güncel sürümü kullanıyorsun (${APP_VERSION}).`);
+  }catch(e){if(!silent)upMsg('Güncelleme denetlenemedi. İnternet bağlantını kontrol et.')}
+}
+$('upBtn').onclick=()=>checkUpdate(false);
+$('upApply').onclick=()=>{location.href=PAGE_URL+'?v='+Date.now()};
+upMsg(baseMsg());
+checkUpdate(true);
+</script>
+</body>
+</html>
