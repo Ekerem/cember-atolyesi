@@ -65,6 +65,9 @@ button,select,textarea,input{font:inherit;color:inherit}
 .idot{fill:var(--ink);stroke:var(--paper);stroke-width:.07}
 .halo{fill:var(--accent);fill-opacity:.16;stroke:var(--accent);stroke-width:.04}
 .halo.start{fill-opacity:.35;stroke-width:.07}
+.leader{stroke:var(--muted);stroke-width:.035;stroke-dasharray:.09 .09;fill:none}
+.lbox{fill:var(--accent-soft);stroke:var(--accent);stroke-width:.035}
+.lon{fill:var(--accent)!important}
 .empty-msg{font:700 .5px var(--body);fill:var(--muted);text-anchor:middle;dominant-baseline:central}
 
 /* kontroller */
@@ -179,7 +182,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <rect id="gridRect" fill="url(#gp)"/>
       <g id="layer"></g>
     </svg>
-    <div class="tip" id="tip">Çemberleri tutup sürükle</div>
+    <div class="tip" id="tip">Çemberleri ve yazıları tutup sürükle</div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
   </div>
   <div class="controls" id="ctrl">
@@ -196,6 +199,8 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <button class="chip" id="undo">Son parçayı geri al</button>
       <button class="chip" id="clearSeg">Parçaları sil</button>
       <button class="chip" id="clearAll">Hepsini temizle</button>
+      <button class="chip" id="resetLbl">Yazıları yerine koy</button>
+      <button class="chip" id="circBtn" aria-pressed="false">Çemberleri gizle</button>
     </div>
     <div class="row">
       <label class="tog"><input type="checkbox" id="snap" checked> Kareli zemine yapış</label>
@@ -284,16 +289,16 @@ const same=(a,b)=>Math.abs(a-b)<EQ;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- durum ---------- */
-const S={circles:[],segs:[],mode:'move',snap:true,showR:true,showL:true,sel:null,start:null,press:null,rubber:null,drag:null,hoverC:null,hoverP:null,tab:0};
+const S={circles:[],segs:[],mode:'move',snap:true,showR:true,showL:true,showC:true,sel:null,start:null,press:null,rubber:null,drag:null,hoverC:null,hoverP:null,tab:0};
 let hyps=[],recs=[];
 const view={W:16,H:11,y0:-5.5,y1:5.5};
 const KEY='cember-atolyesi-v1';
-function save(){try{localStorage.setItem(KEY,JSON.stringify({circles:S.circles,segs:S.segs,snap:S.snap,showR:S.showR,showL:S.showL,hyps,recs}))}catch(_){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({circles:S.circles,segs:S.segs,snap:S.snap,showR:S.showR,showL:S.showL,showC:S.showC,labelOff,hyps,recs}))}catch(_){}}
 function load(){try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(!j)return;
   if(Array.isArray(j.circles))S.circles=j.circles.filter(c=>LETTERS.includes(c.id)&&isFinite(c.x)&&isFinite(c.y)&&isFinite(c.r));
   if(Array.isArray(j.segs))S.segs=j.segs.filter(s=>Array.isArray(s)&&s.length===2);
-  ['snap','showR','showL'].forEach(k=>{if(typeof j[k]==='boolean')S[k]=j[k]});
-  if(Array.isArray(j.hyps))hyps=j.hyps;if(Array.isArray(j.recs))recs=j.recs;
+  ['snap','showR','showL','showC'].forEach(k=>{if(typeof j[k]==='boolean')S[k]=j[k]});
+  if(Array.isArray(j.hyps))hyps=j.hyps;if(Array.isArray(j.recs))recs=j.recs;if(j.labelOff&&typeof j.labelOff==='object')labelOff=j.labelOff;
 }catch(_){}}
 
 /* ---------- geometri ---------- */
@@ -364,28 +369,42 @@ function analyzeTri(V){
 }
 
 /* ---------- çizim ---------- */
+/* sürüklenebilir yazılar: her yazının kendi otomatik yerine göre kaydırması saklanır */
+let labelOff={},labelHits=[];
+const FS={pl:.56,lt:.4,rt:.4};
+function lbl(key,cls,x,y,text,anchor,style){
+  const o=labelOff[key]||{x:0,y:0},X=x+o.x,Y=y+o.y,fs=FS[cls];
+  const w=String(text).length*fs*.6+.26,hh=fs+.22;
+  labelHits.push({key,x:X,y:Y,w,h:hh});
+  const on=S.dragLabel===key||S.hoverLabel===key;
+  let t='';
+  if(anchor&&Math.hypot(o.x,o.y)>.45)t+=`<line class="leader" x1="${f(anchor.x)}" y1="${f(anchor.y)}" x2="${f(X)}" y2="${f(Y)}"/>`;
+  if(on)t+=`<rect class="lbox" x="${f(X-w/2)}" y="${f(Y-hh/2)}" width="${f(w)}" height="${f(hh)}" rx=".14"/>`;
+  return t+`<text class="${cls}${on?' lon':''}" x="${f(X)}" y="${f(Y)}"${style?` style="${style}"`:''}>${text}</text>`;
+}
+function hitLabel(w,pad){for(let k=labelHits.length-1;k>=0;k--){const L=labelHits[k];if(Math.abs(w.x-L.x)<=L.w/2+pad&&Math.abs(w.y-L.y)<=L.h/2+pad)return L.key}return null}
 let pending=false;
 function requestRender(){if(!pending){pending=true;requestAnimationFrame(render)}}
 let last={pts:{},tris:[],pairInfo:[]};
 function render(){
   pending=false;
   const {pts,pairInfo}=buildPoints(),tris=findTriangles(pts),segs=liveSegs(pts);
-  last={pts,tris,pairInfo};
-  let h='';
+  last={pts,tris,pairInfo};labelHits=[];
+  let h='',rtexts=[];
   if(!S.circles.length)h+=`<text class="empty-msg" x="0" y="${f((view.y0+view.y1)/2)}">“+ Çember ekle” düğmesine bas</text>`;
   // çemberler
-  S.circles.forEach(c=>{h+=`<circle class="cfill" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="fill:${CCOL[c.id]}"/>`});
-  S.circles.forEach(c=>{h+=`<circle class="cline${S.sel===c.id||S.hoverC===c.id?' sel':''}" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="stroke:${CCOL[c.id]}"/>`});
+  if(S.showC)S.circles.forEach(c=>{h+=`<circle class="cfill" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="fill:${CCOL[c.id]}"/>`});
+  if(S.showC)S.circles.forEach(c=>{h+=`<circle class="cline${S.sel===c.id||S.hoverC===c.id?' sel':''}" cx="${f(c.x)}" cy="${f(c.y)}" r="${f(c.r)}" style="stroke:${CCOL[c.id]}"/>`});
   // üçgen boyaları
   tris.forEach(T=>{if(T.type)h+=`<polygon class="tfill" points="${T.pts.map(p=>f(p.x)+','+f(p.y)).join(' ')}" style="fill:${TYPE[T.type].col}"/>`});
   // yarıçap çizgileri
-  if(S.showR)S.circles.forEach(c=>{
+  if(S.showR&&S.showC)S.circles.forEach(c=>{
     const others=S.circles.filter(o=>o!==c);let ang=Math.PI*0.8;
     if(others.length){const ox=others.reduce((s,o)=>s+o.x,0)/others.length,oy=others.reduce((s,o)=>s+o.y,0)/others.length;if(Math.hypot(c.x-ox,c.y-oy)>1e-6)ang=Math.atan2(c.y-oy,c.x-ox)}
     ang+=0.5; // merkezleri birleştiren doğrunun biraz altına
     const q={x:c.x+c.r*Math.cos(ang),y:c.y+c.r*Math.sin(ang)},m={x:(c.x+q.x)/2,y:(c.y+q.y)/2},nx=-Math.sin(ang),ny=Math.cos(ang);
     h+=`<line class="rline" x1="${f(c.x)}" y1="${f(c.y)}" x2="${f(q.x)}" y2="${f(q.y)}" style="stroke:${CCOL[c.id]}"/>`;
-    h+=`<text class="rt" x="${f(m.x+nx*.34)}" y="${f(m.y+ny*.34)}" style="fill:${CCOL[c.id]}">r = ${fmt(c.r)}</text>`;
+    rtexts.push(lbl('r'+c.id,'rt',m.x+nx*.34,m.y+ny*.34,'r = '+fmt(c.r),m,'fill:'+CCOL[c.id]));
   });
   // doğru parçaları, eşit olanlar aynı renk ve aynı sayıda çentik
   const Ls=segs.map(([a,b])=>Math.hypot(pts[b].x-pts[a].x,pts[b].y-pts[a].y));
@@ -404,13 +423,14 @@ function render(){
       const T=tris.find(t=>t.ids.includes(a)&&t.ids.includes(b));
       if(T){const cx=T.pts.reduce((s,x)=>s+x.x,0)/3,cy=T.pts.reduce((s,x)=>s+x.y,0)/3;if((mid.x-cx)*nr.x+(mid.y-cy)*nr.y<0)nr={x:-nr.x,y:-nr.y}}
       else if(nr.y>0)nr={x:-nr.x,y:-nr.y};
-      lens.push(`<text class="lt" x="${f(mid.x+nr.x*.45)}" y="${f(mid.y+nr.y*.45)}">${fmt(L)}</text>`);
+      lens.push(lbl('s'+segKey(a,b),'lt',mid.x+nr.x*.45,mid.y+nr.y*.45,fmt(L),mid));
     }
   });
-  h+=lens.join('');
+  h+=rtexts.join('')+lens.join('');
   // lastik çizgi
   if(S.start&&S.rubber&&pts[S.start])h+=`<line class="rubber" x1="${f(pts[S.start].x)}" y1="${f(pts[S.start].y)}" x2="${f(S.rubber.x)}" y2="${f(S.rubber.y)}"/>`;
-  // noktalar
+  // noktalar (harfler en üstte)
+  const plabels=[];
   Object.values(pts).forEach(p=>{
     const segMode=S.mode==='seg',isStart=S.start===p.id,hov=S.hoverP===p.id;
     if(segMode)h+=`<circle class="halo${isStart?' start':''}" cx="${f(p.x)}" cy="${f(p.y)}" r="${isStart||hov?.5:.36}"/>`;
@@ -419,8 +439,9 @@ function render(){
     let lx,ly;
     if(p.center){lx=p.x;ly=p.y+.62}
     else{let dx=p.x-p.mid.x,dy=p.y-p.mid.y,l=Math.hypot(dx,dy);if(l<1e-6){dx=-p.dir.y;dy=p.dir.x;l=Math.hypot(dx,dy)||1}lx=p.x+dx/l*.58;ly=p.y+dy/l*.58}
-    h+=`<text class="pl" x="${f(lx)}" y="${f(ly)}"${p.center?` style="fill:${CCOL[p.id]}"`:''}>${p.id}</text>`;
+    plabels.push(lbl('p'+p.id,'pl',lx,ly,p.id,p,p.center?'fill:'+CCOL[p.id]:''));
   });
+  h+=plabels.join('');
   layer.innerHTML=h;
   syncRows();
   panel(pts,pairInfo,tris);
@@ -600,6 +621,7 @@ function toWorld(e){const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;
 function nearestPoint(w,max){let best=null,bd=max;Object.values(last.pts).forEach(p=>{const d=Math.hypot(p.x-w.x,p.y-w.y);if(d<bd){bd=d;best=p.id}});return best}
 function hitCircle(w,tol){
   if(S.mode==='move'){let b=null,bd=tol*1.6;S.circles.forEach(c=>{const d=Math.hypot(c.x-w.x,c.y-w.y);if(d<bd){bd=d;b=c}});if(b)return b}
+  if(!S.showC)return null; // gizli çember yalnızca merkezinden tutulur
   let b=null,bd=tol;S.circles.forEach(c=>{const d=Math.abs(Math.hypot(c.x-w.x,c.y-w.y)-c.r);if(d<bd){bd=d;b=c}});if(b)return b;
   const ins=S.circles.filter(c=>Math.hypot(c.x-w.x,c.y-w.y)<c.r).sort((a,b)=>a.r-b.r);return ins[0]||null;
 }
@@ -610,6 +632,8 @@ function addSeg(a,b){
 }
 svg.addEventListener('pointerdown',e=>{
   const w=toWorld(e),touch=e.pointerType!=='mouse',tol=touch?.6:.38;
+  if(!nearestPoint(w,.3)){const key=hitLabel(w,touch?.15:.03);
+    if(key){S.dragLabel=key;const o=labelOff[key]||{x:0,y:0};S.lstart={w,o:{x:o.x,y:o.y}};try{svg.setPointerCapture(e.pointerId)}catch(_){}e.preventDefault();setCursor();requestRender();return}}
   if(S.mode==='seg'){
     const p=nearestPoint(w,touch?.75:.5);
     if(p){
@@ -625,6 +649,11 @@ svg.addEventListener('pointerdown',e=>{
 });
 svg.addEventListener('pointermove',e=>{
   const w=toWorld(e);
+  if(S.dragLabel){
+    let x=S.lstart.o.x+w.x-S.lstart.w.x,y=S.lstart.o.y+w.y-S.lstart.w.y;
+    const d=Math.hypot(x,y),max=4;if(d>max){x*=max/d;y*=max/d}
+    labelOff[S.dragLabel]={x,y};requestRender();return;
+  }
   if(S.drag){
     const c=circleById(S.drag.id);if(!c)return;
     let x=w.x+S.drag.off.x,y=w.y+S.drag.off.y;
@@ -633,9 +662,10 @@ svg.addEventListener('pointermove',e=>{
     if(c.x===x&&c.y===y)return;c.x=x;c.y=y;requestRender();return;
   }
   if(S.start){S.rubber=w;S.hoverP=nearestPoint(w,.5);requestRender();return}
-  const hp=S.mode==='seg'?nearestPoint(w,.5):null,hc=hp?null:hitCircle(w,.38);
+  const hl=nearestPoint(w,.3)?null:hitLabel(w,.03);
+  const hp=hl?null:S.mode==='seg'?nearestPoint(w,.5):null,hc=hp||hl?null:hitCircle(w,.38);
   const id=hc?hc.id:null;
-  if(hp!==S.hoverP||id!==S.hoverC){S.hoverP=hp;S.hoverC=id;setCursor();requestRender()}
+  if(hp!==S.hoverP||id!==S.hoverC||hl!==S.hoverLabel){S.hoverP=hp;S.hoverC=id;S.hoverLabel=hl;setCursor();requestRender()}
 });
 function endPtr(e){
   if(S.press){
@@ -644,16 +674,17 @@ function endPtr(e){
     S.press=null;S.rubber=null;requestRender();
   }
   if(S.drag){S.drag=null;setCursor();requestRender()}
+  if(S.dragLabel){S.dragLabel=null;save();setCursor();requestRender()}
 }
 svg.addEventListener('pointerup',endPtr);svg.addEventListener('pointercancel',endPtr);
-svg.addEventListener('pointerleave',()=>{if(!S.drag&&!S.press&&(S.hoverC||S.hoverP)){S.hoverC=null;S.hoverP=null;setCursor();requestRender()}});
-function setCursor(){svg.style.cursor=S.drag?'grabbing':S.hoverP?'pointer':S.hoverC?'grab':''}
+svg.addEventListener('pointerleave',()=>{if(!S.drag&&!S.press&&!S.dragLabel&&(S.hoverC||S.hoverP||S.hoverLabel)){S.hoverC=null;S.hoverP=null;S.hoverLabel=null;setCursor();requestRender()}});
+function setCursor(){svg.style.cursor=S.drag?'grabbing':S.dragLabel||S.hoverLabel?'move':S.hoverP?'pointer':S.hoverC?'grab':''}
 
 function setMode(m){
   S.mode=m;S.start=null;S.press=null;S.rubber=null;
   $('mMove').setAttribute('aria-pressed',m==='move');$('mSeg').setAttribute('aria-pressed',m==='seg');
   const t=$('tip');t.classList.toggle('seg',m==='seg');
-  t.textContent=m==='seg'?'İki noktaya sırayla dokun: aralarına doğru parçası çizilir':'Çemberleri tutup sürükle';
+  t.textContent=m==='seg'?'İki noktaya sırayla dokun: aralarına doğru parçası çizilir':'Çemberleri ve yazıları tutup sürükle';
   requestRender();
 }
 $('mMove').onclick=()=>setMode('move');$('mSeg').onclick=()=>setMode('seg');
@@ -669,8 +700,11 @@ function quickTriangle(){
 $('quick').onclick=quickTriangle;
 $('undo').onclick=()=>{if(S.segs.length){S.segs.pop();requestRender()}};
 $('clearSeg').onclick=()=>{S.segs=[];S.start=null;requestRender()};
-$('clearAll').onclick=()=>{S.circles=[];S.segs=[];S.sel=null;S.start=null;rebuildRows();requestRender()};
+$('resetLbl').onclick=()=>{labelOff={};requestRender()};
+$('clearAll').onclick=()=>{labelOff={};S.circles=[];S.segs=[];S.sel=null;S.start=null;rebuildRows();requestRender()};
 $('snap').onchange=e=>{S.snap=e.target.checked;save()};
+function applyCirc(){const b=$('circBtn');b.textContent=S.showC?'Çemberleri gizle':'Çemberleri göster';b.setAttribute('aria-pressed',!S.showC)}
+$('circBtn').onclick=()=>{S.showC=!S.showC;applyCirc();requestRender()};
 $('showR').onchange=e=>{S.showR=e.target.checked;requestRender()};
 $('showL').onchange=e=>{S.showL=e.target.checked;requestRender()};
 
@@ -685,7 +719,7 @@ function buildExample(cond){
     if(!same(r1,r2)&&d<r1+r2&&d>Math.abs(r1-r2)&&(cond==='neqR'||(!same(r1,d)&&!same(r2,d))))break}}
   const x0=-Math.floor(d/2),y0=Math.min(1,view.y1-Math.max(r1,r2)-.5);
   S.circles=[{id:'A',x:x0,y:Math.round(y0),r:r1},{id:'B',x:x0+d,y:Math.round(y0),r:r2}];
-  S.segs=[['A','B'],['A','K'],['B','K']];S.sel='A';S.start=null;
+  S.segs=[['A','B'],['A','K'],['B','K']];S.sel='A';labelOff={};S.start=null;
   rebuildRows();setTab(0);requestRender();
   toast('Koşula uyan bir örnek kuruldu. Üçgenin türüne bak, sonra Kaydet.');
   if(matchMedia('(max-width:760px)').matches)wrap.scrollIntoView({behavior:'smooth',block:'start'});
@@ -720,11 +754,11 @@ function resize(){
 new ResizeObserver(resize).observe(wrap);new ResizeObserver(resize).observe(ctrl);
 
 load();
-$('snap').checked=S.snap;$('showR').checked=S.showR;$('showL').checked=S.showL;
+$('snap').checked=S.snap;$('showR').checked=S.showR;$('showL').checked=S.showL;applyCirc();
 rebuildRows();renderRecs();resize();render();
 
 /* ---------- güncelleme ---------- */
-const APP_VERSION='1.0.0';
+const APP_VERSION='1.1.0';
 const UPDATE={owner:'Ekerem',repo:'cember-atolyesi'};
 const PAGE_URL=`https://${UPDATE.owner.toLowerCase()}.github.io/${UPDATE.repo}/`;
 const APK_URL=`https://github.com/${UPDATE.owner}/${UPDATE.repo}/releases/latest/download/cember-atolyesi.apk`;
