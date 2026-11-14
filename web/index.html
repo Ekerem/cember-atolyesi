@@ -758,7 +758,7 @@ $('snap').checked=S.snap;$('showR').checked=S.showR;$('showL').checked=S.showL;a
 rebuildRows();renderRecs();resize();render();
 
 /* ---------- güncelleme ---------- */
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.1.1';
 const UPDATE={owner:'Ekerem',repo:'cember-atolyesi'};
 const PAGE_URL=`https://${UPDATE.owner.toLowerCase()}.github.io/${UPDATE.repo}/`;
 const APK_URL=`https://github.com/${UPDATE.owner}/${UPDATE.repo}/releases/latest/download/cember-atolyesi.apk`;
@@ -785,6 +785,11 @@ $('upBtn').onclick=()=>checkUpdate(false);
 $('upApply').onclick=()=>{location.href=PAGE_URL+'?v='+Date.now()};
 upMsg(baseMsg());
 checkUpdate(true);
+
+/* çevrimdışı katman: son açılan sürüm cihazda saklanır */
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
